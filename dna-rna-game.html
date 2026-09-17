@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ДНК чи РНК — гра</title>
+<style>
+  :root{
+    --bg1:#0f2027;
+    --bg2:#203a43;
+    --bg3:#2c5364;
+    --dna-color:#4fc3f7;
+    --rna-color:#ffb74d;
+    --correct:#4caf50;
+    --wrong:#e53935;
+    --card-bg:#ffffff;
+    --text-dark:#1a1a2e;
+    --text-light:#f4f4f9;
+    --accent:#7c4dff;
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --card-bg:#1e2530;
+      --text-dark:#f0f0f5;
+    }
+  }
+  :root[data-theme="dark"]{
+    --card-bg:#1e2530;
+    --text-dark:#f0f0f5;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    min-height:100%;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+    background-attachment: fixed;
+    color: var(--text-light);
+    overflow-x:hidden;
+  }
+  #watermark-layer{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:10px;
+    text-align:center;
+    pointer-events:none;
+    z-index:3000;
+    font-size: clamp(0.72rem, 2.6vw, 0.92rem);
+    font-weight:600;
+    letter-spacing:1px;
+    color: rgba(255,255,255,0.28);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    user-select:none;
+  }
+  .app{
+    max-width: 620px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 24px 16px 48px;
+    position:relative;
+    z-index:1;
+  }
+  h1{
+    font-size: clamp(1.4rem, 5vw, 2.1rem);
+    text-align:center;
+    margin: 8px 0 4px;
+    letter-spacing:0.5px;
+  }
+  .subtitle{
+    text-align:center;
+    color:#c7d6e0;
+    font-size:0.95rem;
+    margin-bottom: 20px;
+  }
+  .helix{
+    font-size: 2.6rem;
+    line-height:1;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+  }
+
+  /* ---- Start screen ---- */
+  .screen{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .levels-info{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin: 18px 0 20px;
+  }
+  .level-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 12px 14px;
+    backdrop-filter: blur(4px);
+    cursor:pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .level-row.active{
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.14);
+  }
+  .level-row.disabled-look{
+    opacity:0.45;
+  }
+  .level-row input[type=checkbox]{
+    width:20px;height:20px;flex-shrink:0;accent-color:#7c4dff;cursor:pointer;
+  }
+  .level-dot{
+    width:14px;height:14px;border-radius:50%;flex-shrink:0;
+  }
+  .lvl1{background:#4caf50;}
+  .lvl2{background:#ffca28;}
+  .lvl3{background:#ef5350;}
+  .level-row .txt{font-size:0.92rem; color:#e6eef2; flex:1;}
+  .level-row b{color:#fff;}
+  .level-count{
+    font-size:0.78rem;
+    color:#b8c6cf;
+    white-space:nowrap;
+  }
+
+  .qty-box{
+    width:100%;
+    background: rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 22px;
+  }
+  .qty-box .qty-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:0.9rem;
+    margin-bottom:8px;
+    color:#e6eef2;
+  }
+  .qty-box input[type=range]{
+    width:100%;
+    accent-color:#7c4dff;
+  }
+
+  .btn{
+    border:none;
+    border-radius: 999px;
+    padding: 15px 36px;
+    font-size: 1.05rem;
+    font-weight:700;
+    cursor:pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    color:white;
+    background: linear-gradient(135deg, var(--accent), #536dfe);
+    box-shadow: 0 6px 18px rgba(124,77,255,0.45);
+  }
+  .btn:active{transform: scale(0.96);}
+  .btn:hover{box-shadow: 0 8px 22px rgba(124,77,255,0.6);}
+  .btn.secondary{
+    background: rgba(255,255,255,0.12);
+    box-shadow:none;
+    margin-top:12px;
+  }
+  .btn:disabled{opacity:0.5; cursor:default; transform:none;}
+
+  .warn-msg{
+    color:#ffab91;
+    font-size:0.85rem;
+    margin-bottom:10px;
+    min-height:18px;
+    text-align:center;
+  }
+
+  /* ---- Game HUD ---- */
+  .hud{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 14px;
+    gap:10px;
+  }
+  .hud-chip{
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-size:0.85rem;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+  }
+  .progress-wrap{
+    width:100%;
+    height:8px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 999px;
+    overflow:hidden;
+    margin-bottom: 22px;
+  }
+  .progress-bar{
+    height:100%;
+    background: linear-gradient(90deg, #4fc3f7, #7c4dff);
+    width:0%;
+    transition: width 0.4s ease;
+  }
+
+  /* ---- Question card ---- */
+  .card{
+    width:100%;
+    background: var(--card-bg);
+    color: var(--text-dark);
+    border-radius: var(--radius);
+    padding: 26px 22px;
+    text-align:center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+    position:relative;
+    min-height: 160px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap: 14px;
+  }
+  .level-badge{
+    position:absolute;
+    top:14px;
+    left:14px;
+    font-size:0.72rem;
+    font-weight:700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color:white;
+    letter-spacing:0.3px;
+  }
+  .points-badge{
+    position:absolute;
+    top:14px;
+    right:14px;
+    font-size:0.72rem;
+    font-weight:700;
+    color:#8a8a9a;
+  }
+  .question-text{
+    font-size: clamp(1.02rem, 4.4vw, 1.22rem);
+    font-weight:600;
+    line-height:1.45;
+    margin-top: 10px;
+  }
+  .answers{
+    display:flex;
+    gap:12px;
+    width:100%;
+    margin-top: 22px;
+  }
+  .answer-btn{
+    flex:1;
+    padding: 16px 8px;
+    border-radius: 14px;
+    border: 2px solid transparent;
+    font-size: 1.05rem;
+    font-weight:800;
+    letter-spacing: 0.5px;
+    cursor:pointer;
+    transition: all 0.15s ease;
+    color:white;
+  }
+  .answer-btn.dna{ background: var(--dna-color); }
+  .answer-btn.rna{ background: var(--rna-color); }
+  .answer-btn:active{ transform: scale(0.95); }
+  .answer-btn:disabled{ opacity:0.55; cursor:default; }
+  .answer-btn.correct-flash{ box-shadow: 0 0 0 4px var(--correct) inset; }
+  .answer-btn.wrong-flash{ box-shadow: 0 0 0 4px var(--wrong) inset; }
+
+  .feedback{
+    min-height: 30px;
+    font-size: 0.95rem;
+    font-weight:700;
+    margin-top: 4px;
+  }
+  .feedback.ok{ color: var(--correct); }
+  .feedback.bad{ color: var(--wrong); }
+
+  .next-wrap{
+    display:flex;
+    justify-content:center;
+    margin-top: 18px;
+  }
+
+  /* ---- Result screen ---- */
+  .result-card{
+    width:100%;
+    background: var(--card-bg);
+    color: var(--text-dark);
+    border-radius: var(--radius);
+    padding: 30px 24px;
+    text-align:center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  }
+  .big-score{
+    font-size: 3rem;
+    font-weight:900;
+    background: linear-gradient(135deg, var(--accent), #4fc3f7);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    margin: 6px 0;
+  }
+  .score-sub{
+    color:#666;
+    font-size:0.95rem;
+    margin-bottom: 18px;
+  }
+  .breakdown{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin: 18px 0;
+    text-align:left;
+  }
+  .breakdown-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.05);
+    font-size:0.9rem;
+  }
+  .medal{
+    font-size:2.4rem;
+    margin-bottom: 4px;
+  }
+  footer{
+    margin-top: 26px;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    text-align:center;
+  }
+  .hud-chip.streak{
+    background: linear-gradient(135deg, #ff7043, #ff3d00);
+    font-weight:800;
+    transition: transform 0.2s ease;
+  }
+  .hud-chip.streak.pulse{ transform: scale(1.15); }
+
+  .record-line{
+    font-size:0.85rem;
+    color:#ffd54f;
+    margin-bottom:14px;
+    text-align:center;
+    min-height:18px;
+  }
+  .new-record{
+    display:inline-block;
+    margin-top:10px;
+    font-size:0.9rem;
+    font-weight:800;
+    color:#ffb300;
+    animation: bounce 0.6s ease infinite alternate;
+  }
+  @keyframes bounce{
+    from{ transform:translateY(0); }
+    to{ transform:translateY(-4px); }
+  }
+
+  #confetti-layer{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+    z-index:4000;
+  }
+  .confetti-piece{
+    position:absolute;
+    top:-40px;
+    font-size:1.6rem;
+    animation-name: confetti-fall;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    will-change: transform;
+  }
+  @keyframes confetti-fall{
+    0%{ transform: translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform: translateY(110vh) rotate(360deg); opacity:0.9; }
+  }
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div id="watermark-layer">Зробив Музика Дмитро 9-Г</div>
+<div id="confetti-layer"></div>
+<div class="app">
+
+  <div class="helix">🧬</div>
+  <h1>ДНК чи РНК?</h1>
+  <div class="subtitle">Перевір свої знання про нуклеїнові кислоти — 9 клас</div>
+
+  <!-- START SCREEN -->
+  <div class="screen" id="start-screen">
+    <div class="levels-info" id="levels-info">
+      <label class="level-row active" data-level="1">
+        <input type="checkbox" class="lvl-checkbox" value="1" checked>
+        <div class="level-dot lvl1"></div>
+        <div class="txt">🟢 Рівень 1 — базові поняття · <b>1 бал</b> за твердження</div>
+        <div class="level-count" id="count-lvl-1">0 питань</div>
+      </label>
+      <label class="level-row active" data-level="2">
+        <input type="checkbox" class="lvl-checkbox" value="2" checked>
+        <div class="level-dot lvl2"></div>
+        <div class="txt">🟡 Рівень 2 — функції та розташування · <b>2 бали</b> за твердження</div>
+        <div class="level-count" id="count-lvl-2">0 питань</div>
+      </label>
+      <label class="level-row active" data-level="3">
+        <input type="checkbox" class="lvl-checkbox" value="3" checked>
+        <div class="level-dot lvl3"></div>
+        <div class="txt">🔴 Рівень 3 — просунутий рівень · <b>3 бали</b> за твердження</div>
+        <div class="level-count" id="count-lvl-3">0 питань</div>
+      </label>
+    </div>
+
+    <div class="qty-box">
+      <div class="qty-label"><span>Кількість питань у грі</span><b id="qty-value">10</b></div>
+      <input type="range" id="qty-slider" min="4" max="4" step="1" value="4" oninput="onQtyChange()">
+    </div>
+
+    <div class="warn-msg" id="warn-msg"></div>
+    <div class="record-line" id="record-line"></div>
+    <button class="btn" id="start-btn" onclick="startGame()">▶️ Почати гру</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen hidden" id="game-screen">
+    <div class="hud">
+      <div class="hud-chip">❓ <span id="q-index">1</span>/<span id="q-total">15</span></div>
+      <div class="hud-chip streak hidden" id="streak-chip">🔥 <span id="streak-value">0</span></div>
+      <div class="hud-chip">⭐ <span id="score-chip">0</span> балів</div>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+    <div class="card">
+      <span class="level-badge" id="level-badge">Рівень 1</span>
+      <span class="points-badge" id="points-badge">+1 бал</span>
+      <div class="question-text" id="question-text">Текст твердження</div>
+      <div class="answers">
+        <button class="answer-btn dna" id="btn-dna" onclick="answer('ДНК')">ДНК</button>
+        <button class="answer-btn rna" id="btn-rna" onclick="answer('РНК')">РНК</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div class="next-wrap">
+      <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>Далі →</button>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div class="screen hidden" id="result-screen">
+    <div class="result-card">
+      <div class="medal" id="medal">🏆</div>
+      <div id="result-title" style="font-size:1.2rem; font-weight:700;">Гру завершено!</div>
+      <div class="big-score"><span id="final-score">0</span> / <span id="max-score">31</span></div>
+      <div class="score-sub" id="result-comment">Чудовий результат!</div>
+      <div id="new-record-badge"></div>
+
+      <div class="breakdown" id="breakdown">
+        <div class="breakdown-row" id="row-lvl1"><span>🟢 Рівень 1</span><span id="lvl1-result">0/6</span></div>
+        <div class="breakdown-row" id="row-lvl2"><span>🟡 Рівень 2</span><span id="lvl2-result">0/12</span></div>
+        <div class="breakdown-row" id="row-lvl3"><span>🔴 Рівень 3</span><span id="lvl3-result">0/13</span></div>
+      </div>
+
+      <button class="btn" onclick="backToSettings()">⚙️ Змінити налаштування</button>
+      <button class="btn secondary" onclick="restartGame()">🔁 Зіграти ще раз</button>
+    </div>
+  </div>
+
+  <footer>Гра «ДНК чи РНК» · 9 клас</footer>
+</div>
+
+<script>
+// ---- Data: statements with level, points, correct answer(s) ----
+// answer can be "ДНК", "РНК" or "both"
+const questions = [
+  // ===== Level 1 — basic (1 point each) =====
+  { level:1, points:1, text:"Містить залишок цукру дезоксирибозу.", answer:"ДНК" },
+  { level:1, points:1, text:"Містить залишок цукру рибозу.", answer:"РНК" },
+  { level:1, points:1, text:"Має форму подвійної спіралі.", answer:"ДНК" },
+  { level:1, points:1, text:"Найчастіше складається з одного ланцюга.", answer:"РНК" },
+  { level:1, points:1, text:"Містить нітрогенову основу тимін.", answer:"ДНК" },
+  { level:1, points:1, text:"Містить нітрогенову основу урацил.", answer:"РНК" },
+  { level:1, points:1, text:"Містить чотири типи нуклеотидів: аденін, тимін, гуанін, цитозин.", answer:"ДНК" },
+  { level:1, points:1, text:"Містить чотири типи нуклеотидів: аденін, урацил, гуанін, цитозин.", answer:"РНК" },
+  { level:1, points:1, text:"Утворює хроматин разом із білками-гістонами.", answer:"ДНК" },
+  { level:1, points:1, text:"Є менш стійкою молекулою і швидше руйнується в клітині.", answer:"РНК" },
+
+  // ===== Level 2 — functions & location (2 points each) =====
+  { level:2, points:2, text:"Зберігає спадкову інформацію в ядрі клітини.", answer:"ДНК" },
+  { level:2, points:2, text:"Бере безпосередню участь у біосинтезі білка (транспортує амінокислоти або копіює код).", answer:"РНК" },
+  { level:2, points:2, text:"Здатна до самоподвоєння (реплікації).", answer:"ДНК" },
+  { level:2, points:2, text:"Синтезується на матриці ДНК за принципом комплементарності.", answer:"РНК" },
+  { level:2, points:2, text:"Міститься не лише в ядрі, а й у мітохондріях та хлоропластах.", answer:"ДНК" },
+  { level:2, points:2, text:"Буває трьох основних видів: інформаційна, транспортна, рибосомна.", answer:"РНК" },
+  { level:2, points:2, text:"Визначає порядок амінокислот у білку через генетичний код.", answer:"ДНК" },
+  { level:2, points:2, text:"Транспортна форма цієї молекули переносить амінокислоти до рибосоми.", answer:"РНК" },
+  { level:2, points:2, text:"Рибосомна форма цієї молекули входить до складу рибосом.", answer:"РНК" },
+  { level:2, points:2, text:"Забезпечує передачу спадкової інформації від батьків нащадкам.", answer:"ДНК" },
+  { level:2, points:2, text:"Інформаційна форма переносить дані про структуру білка від ДНК до рибосом.", answer:"РНК" },
+  { level:2, points:2, text:"У еукаріотів локалізується переважно в ядрі, мітохондріях і пластидах.", answer:"ДНК" },
+
+  // ===== Level 3 — advanced (3 points each) =====
+  { level:3, points:3, text:"Нітрогенова основа аденін утворює два водневі зв'язки з тиміном.", answer:"ДНК" },
+  { level:3, points:3, text:"Нітрогенова основа гуанін утворює три водневі зв'язки з цитозином.", answer:"both" },
+  { level:3, points:3, text:"До складу цієї молекули входить кодон АУГ, який запускає синтез білка.", answer:"РНК" },
+  { level:3, points:3, text:"Має найбільшу молекулярну масу серед усіх нуклеїнових кислот.", answer:"ДНК" },
+  { level:3, points:3, text:"Складається з двох антипаралельних ланцюгів, з'єднаних водневими зв'язками.", answer:"ДНК" },
+  { level:3, points:3, text:"Переносить інформацію про структуру білка від ДНК до рибосом під час транскрипції.", answer:"РНК" },
+  { level:3, points:3, text:"Реплікується за напівконсервативним механізмом.", answer:"ДНК" },
+  { level:3, points:3, text:"Антикодон цієї молекули комплементарно з'єднується з кодоном іРНК.", answer:"РНК" },
+  { level:3, points:3, text:"Принцип комплементарності для цієї молекули: А-Т, Г-Ц.", answer:"ДНК" },
+  { level:3, points:3, text:"Принцип комплементарності для цієї молекули: А-У, Г-Ц.", answer:"РНК" },
+];
+
+let order = [];
+let currentIndex = 0;
+let score = 0;
+let maxScore = 0;
+let levelScores = {1:{got:0,max:0}, 2:{got:0,max:0}, 3:{got:0,max:0}};
+let answered = false;
+let selectedLevels = [1,2,3];
+let selectedCount = 10;
+let streak = 0;
+let bonusPoints = 0;
+
+function getBestPct(){
+  try{
+    const v = localStorage.getItem('dnaRnaBestPct');
+    return v ? parseFloat(v) : null;
+  }catch(e){ return null; }
+}
+function setBestPct(pct){
+  try{ localStorage.setItem('dnaRnaBestPct', pct.toString()); }catch(e){}
+}
+function renderRecordLine(){
+  const best = getBestPct();
+  const line = document.getElementById('record-line');
+  line.textContent = (best !== null) ? `🏆 Твій рекорд: ${Math.round(best*100)}%` : '';
+}
+
+function getPoolByLevels(levels){
+  return questions.filter(q => levels.includes(q.level));
+}
+
+function updateLevelCounts(){
+  [1,2,3].forEach(lvl=>{
+    const c = questions.filter(q=>q.level===lvl).length;
+    document.getElementById('count-lvl-'+lvl).textContent = c + (c===1?' питання':' питань');
+  });
+}
+
+function getCheckedLevels(){
+  return Array.from(document.querySelectorAll('.lvl-checkbox'))
+    .filter(cb=>cb.checked)
+    .map(cb=>parseInt(cb.value,10));
+}
+
+function onLevelsChange(){
+  selectedLevels = getCheckedLevels();
+  document.querySelectorAll('.level-row').forEach(row=>{
+    const lvl = parseInt(row.dataset.level,10);
+    row.classList.toggle('active', selectedLevels.includes(lvl));
+  });
+
+  const pool = getPoolByLevels(selectedLevels);
+  const slider = document.getElementById('qty-slider');
+  const warn = document.getElementById('warn-msg');
+  const startBtn = document.getElementById('start-btn');
+
+  if(pool.length === 0){
+    slider.min = 0; slider.max = 0; slider.value = 0;
+    document.getElementById('qty-value').textContent = 0;
+    warn.textContent = '⚠️ Обери хоча б один рівень.';
+    startBtn.disabled = true;
+    return;
+  }
+
+  warn.textContent = '';
+  startBtn.disabled = false;
+
+  const minQ = Math.min(4, pool.length);
+  slider.min = minQ;
+  slider.max = pool.length;
+  if(parseInt(slider.value,10) > pool.length || !slider.dataset.touched){
+    slider.value = pool.length;
+  }
+  onQtyChange();
+}
+
+function onQtyChange(){
+  const slider = document.getElementById('qty-slider');
+  slider.dataset.touched = "1";
+  selectedCount = parseInt(slider.value,10) || 0;
+  document.getElementById('qty-value').textContent = selectedCount;
+}
+
+document.querySelectorAll('.lvl-checkbox').forEach(cb=>{
+  cb.addEventListener('change', onLevelsChange);
+});
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function startGame(){
+  selectedLevels = getCheckedLevels();
+  const pool = getPoolByLevels(selectedLevels);
+  if(pool.length === 0) return;
+
+  const count = Math.max(1, Math.min(selectedCount || pool.length, pool.length));
+  order = shuffle(pool).slice(0, count);
+
+  currentIndex = 0;
+  score = 0;
+  streak = 0;
+  bonusPoints = 0;
+  levelScores = {1:{got:0,max:0}, 2:{got:0,max:0}, 3:{got:0,max:0}};
+  order.forEach(q=> levelScores[q.level].max += q.points );
+  maxScore = order.reduce((s,q)=>s+q.points,0);
+
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('result-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  document.getElementById('q-total').textContent = order.length;
+  renderQuestion();
+}
+
+function renderQuestion(){
+  answered = false;
+  const q = order[currentIndex];
+  document.getElementById('q-index').textContent = currentIndex+1;
+  document.getElementById('score-chip').textContent = score;
+  document.getElementById('question-text').textContent = q.text;
+  document.getElementById('points-badge').textContent = `+${q.points} ${q.points===1?'бал':'бали'}`;
+
+  const badge = document.getElementById('level-badge');
+  const colors = {1:'#4caf50', 2:'#ffb300', 3:'#e53935'};
+  badge.style.background = colors[q.level];
+  badge.textContent = `Рівень ${q.level}`;
+
+  const progress = (currentIndex / order.length) * 100;
+  document.getElementById('progress-bar').style.width = progress + '%';
+
+  const dnaBtn = document.getElementById('btn-dna');
+  const rnaBtn = document.getElementById('btn-rna');
+  dnaBtn.disabled = false;
+  rnaBtn.disabled = false;
+  dnaBtn.classList.remove('correct-flash','wrong-flash');
+  rnaBtn.classList.remove('correct-flash','wrong-flash');
+
+  const fb = document.getElementById('feedback');
+  fb.textContent = '';
+  fb.className = 'feedback';
+
+  document.getElementById('next-btn').disabled = true;
+  document.getElementById('next-btn').textContent = currentIndex === order.length-1 ? 'Завершити 🏁' : 'Далі →';
+
+  const streakChip = document.getElementById('streak-chip');
+  document.getElementById('streak-value').textContent = streak;
+  streakChip.classList.toggle('hidden', streak < 2);
+}
+
+function answer(choice){
+  if(answered) return;
+  answered = true;
+  const q = order[currentIndex];
+  const dnaBtn = document.getElementById('btn-dna');
+  const rnaBtn = document.getElementById('btn-rna');
+  dnaBtn.disabled = true;
+  rnaBtn.disabled = true;
+
+  const isCorrect = (q.answer === 'both') || (choice === q.answer);
+  const fb = document.getElementById('feedback');
+
+  if(isCorrect){
+    score += q.points;
+    levelScores[q.level].got += q.points;
+    streak++;
+    let bonusMsg = '';
+    if(streak > 0 && streak % 3 === 0){
+      bonusPoints += 1;
+      score += 1;
+      bonusMsg = ` 🔥 Серія ${streak}! +1 бонусний бал`;
+    }
+    fb.textContent = (q.answer === 'both'
+      ? '✅ Правильно! Це стосується і ДНК, і РНК.'
+      : '✅ Правильно!') + bonusMsg;
+    fb.className = 'feedback ok';
+    (choice==='ДНК'?dnaBtn:rnaBtn).classList.add('correct-flash');
+
+    const streakChip = document.getElementById('streak-chip');
+    document.getElementById('streak-value').textContent = streak;
+    streakChip.classList.toggle('hidden', streak < 2);
+    streakChip.classList.add('pulse');
+    setTimeout(()=>streakChip.classList.remove('pulse'), 250);
+  } else {
+    streak = 0;
+    document.getElementById('streak-chip').classList.add('hidden');
+    fb.textContent = q.answer === 'both'
+      ? '❌ Неточно. Ця властивість стосується і ДНК, і РНК.'
+      : `❌ Неправильно. Правильна відповідь: ${q.answer}.`;
+    fb.className = 'feedback bad';
+    (choice==='ДНК'?dnaBtn:rnaBtn).classList.add('wrong-flash');
+    const correctBtn = q.answer === 'ДНК' ? dnaBtn : (q.answer==='РНК'? rnaBtn : null);
+    if(correctBtn) correctBtn.classList.add('correct-flash');
+  }
+
+  document.getElementById('score-chip').textContent = score;
+  document.getElementById('next-btn').disabled = false;
+}
+
+function nextQuestion(){
+  currentIndex++;
+  if(currentIndex >= order.length){
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResults(){
+  document.getElementById('progress-bar').style.width = '100%';
+  document.getElementById('game-screen').classList.add('hidden');
+  document.getElementById('result-screen').classList.remove('hidden');
+
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('max-score').textContent = maxScore;
+
+  [1,2,3].forEach(lvl=>{
+    const row = document.getElementById('row-lvl'+lvl);
+    if(levelScores[lvl].max === 0){
+      row.classList.add('hidden');
+    } else {
+      row.classList.remove('hidden');
+      document.getElementById('lvl'+lvl+'-result').textContent = `${levelScores[lvl].got}/${levelScores[lvl].max}`;
+    }
+  });
+
+  const pct = maxScore > 0 ? Math.min(score / maxScore, 1) : 0;
+  let medal, title, comment;
+  if(pct === 1){
+    medal='🏆'; title='Ідеально!'; comment='Всі відповіді правильні — справжній генетик!';
+  } else if(pct >= 0.8){
+    medal='🥇'; title='Відмінно!'; comment='Дуже добре знаєш різницю між ДНК та РНК.';
+  } else if(pct >= 0.6){
+    medal='🥈'; title='Добре!'; comment='Непогано, але є що повторити.';
+  } else if(pct >= 0.4){
+    medal='🥉'; title='Непогано'; comment='Варто ще раз переглянути тему.';
+  } else {
+    medal='📘'; title='Потрібно повторити'; comment='Спробуй ще раз після повторення матеріалу.';
+  }
+  document.getElementById('medal').textContent = medal;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-comment').textContent = comment;
+
+  const prevBest = getBestPct();
+  const badge = document.getElementById('new-record-badge');
+  if(prevBest === null || pct > prevBest){
+    setBestPct(pct);
+    badge.innerHTML = '<span class="new-record">🌟 Новий рекорд!</span>';
+  } else {
+    badge.innerHTML = '';
+  }
+  renderRecordLine();
+
+  if(pct >= 0.8){
+    launchConfetti();
+  }
+}
+
+function launchConfetti(){
+  const layer = document.getElementById('confetti-layer');
+  const emojis = ['🎉','🧬','✨','⭐','🎊'];
+  const count = 26;
+  for(let i=0;i<count;i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    piece.style.left = Math.random()*100 + 'vw';
+    const duration = 2.2 + Math.random()*1.6;
+    piece.style.animationDuration = duration + 's';
+    piece.style.animationDelay = (Math.random()*0.5) + 's';
+    layer.appendChild(piece);
+    setTimeout(()=> piece.remove(), (duration+0.6)*1000);
+  }
+}
+
+function restartGame(){
+  startGame();
+}
+
+function backToSettings(){
+  document.getElementById('result-screen').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+}
+
+// init
+updateLevelCounts();
+onLevelsChange();
+renderRecordLine();
+</script>
+</body>
+</html>
